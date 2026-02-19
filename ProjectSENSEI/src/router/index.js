@@ -3,21 +3,54 @@ import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import DashboardView from '../views/DashboardView.vue'
 import AdminView from '../views/AdminView.vue'
-import MisReservasView from '../views/MisReservasView.vue'
-
+import MyReservationsView from '../views/MyReservationsView.vue'
+import { jwtDecode } from 'jwt-decode'
 
 const routes = [
   { path: '/', component: LoginView },
   { path: '/register', component: RegisterView },
   { path: '/dashboard', component: DashboardView },
   { path: '/admin', component: AdminView },
-  { path: '/mis-reservas', component: MisReservasView }
+  { path: '/my-reservations', component: MyReservationsView }
 
-]
+] 
 
 const router = createRouter({
   history: createWebHistory(),
   routes
 })
+
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('token')
+
+  if (!token && to.path !== '/' && to.path !== '/register') {
+    return next('/')
+  }
+
+  if (token) {
+    try {
+      const user = jwtDecode(token)
+
+      // Verificar expiración
+      const currentTime = Date.now() / 1000
+      if (user.exp < currentTime) {
+        localStorage.removeItem('token')
+        return next('/')
+      }
+
+      if (to.path === '/admin' && user.role !== 'admin') {
+        return next('/dashboard')
+      }
+
+    } catch (error) {
+      localStorage.removeItem('token')
+      return next('/')
+    }
+  }
+
+  next()
+})
+
+
 
 export default router

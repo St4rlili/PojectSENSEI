@@ -13,9 +13,20 @@
       <p>{{ cls.description }}</p>
       <p>Fecha: {{ formatDate(cls.date) }}</p>
       <p>Capacidad: {{ cls.capacity }}</p>
+      <p>Plazas disponibles: {{ cls.available }}</p>
 
-      <button @click="reserve(cls._id)">
-        Reservar
+      <button v-if="cls.alreadyReserved"
+              @click="cancelReservation(cls.reservationId)">
+        Cancelar reserva
+      </button>
+
+      <button v-else
+              @click="reserve(cls._id)"
+              :disabled="cls.available <= 0 || cls.isFinished">
+
+        {{ cls.isFinished ? 'Clase finalizada' :
+          cls.available <= 0 ? 'Clase llena' :
+          'Reservar' }}
       </button>
     </div>
 
@@ -48,13 +59,22 @@ const loadClases = async () => {
 
 const reserve = async (classId) => {
   try {
-    await api.post('/reservas', { classId }) 
-    alert('Reserva realizada')
+    await api.post('/reservas', { classId })
+    await loadClases()
   } catch (error) {
-    console.error("Error reservando clase:", error)
-    alert('Error al reservar')
+    alert(error.response?.data?.message || 'Error al reservar')
   }
 }
+
+const cancelReservation = async (reservationId) => {
+  try {
+    await api.delete(`/reservas/${reservationId}`)
+    await loadClases()
+  } catch (error) {
+    alert(error.response?.data?.message || 'Error al cancelar')
+  }
+}
+
 
 const logout = () => {
   userStore.logout()

@@ -114,7 +114,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/userStore'
 import api from '../services/api'
-import * as jwt_decode from 'jwt-decode'
+import { jwtDecode } from 'jwt-decode'
 
 const username = ref('')
 const password = ref('')
@@ -134,7 +134,7 @@ const login = async () => {
     const token = response.data.token
     localStorage.setItem('token', token)
 
-    const user = jwt_decode(token)
+    const user = jwtDecode(token)
 
     if (user.role === 'admin') {
       router.push('/admin')

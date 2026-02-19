@@ -8,13 +8,40 @@ const router = express.Router()
 
 // GET de todas las clases (solo usuarios)
 router.get('/', authMiddleware, async (req, res) => {
-  try {
-    const db = getDB()
-    const clases = await db.collection('clases').find().toArray()
-    res.json(clases)
-  } catch (error) {
-    res.status(500).json({ message: error.message })
-  }
+  const db = getDB()
+  const userId = new ObjectId(req.user.id)
+
+  const clases = await db.collection('clases').find().toArray()
+
+  const reservas = await db.collection('reservas')
+    .find({ userId })
+    .toArray()
+
+  const reservasMap = new Map()
+  reservas.forEach(r => {
+    reservasMap.set(r.classId.toString(), r)
+  })
+
+  const clasesConInfo = await Promise.all(
+    clases.map(async (c) => {
+
+      const totalReservas = await db.collection('reservas')
+        .countDocuments({ classId: c._id.toString() })
+
+      const reservaUsuario = reservasMap.get(c._id.toString())
+
+      return {
+        ...c,
+        reserved: totalReservas,
+        available: c.capacity - totalReservas,
+        alreadyReserved: !!reservaUsuario,
+        reservationId: reservaUsuario?._id.toString() || null,
+        isFinished: new Date(c.date) < new Date()
+      }
+    })
+  )
+
+  res.json(clasesConInfo)
 })
 
 // POST crear una nueva clase (solo admin)
@@ -39,7 +66,6 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
     res.status(500).json({ message: error.message })
   }
 })
-
 
 // PUT modificar una clase (solo admin)
 router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {

@@ -24,20 +24,27 @@
       <p>{{ cls.description }}</p>
       <p>{{ formatDate(cls.date) }}</p>
       <p>Capacidad: {{ cls.capacity }}</p>
+      <p>Ocupadas: {{ cls.reserved }}</p>
+      <p>Disponibles: {{ cls.available }}</p>
+
 
       <button @click="deleteClass(cls._id)">Eliminar</button>
-      <button @click="viewReservations(cls._id)">Ver Reservas</button>
+      <button @click="openAttendanceModal(cls._id)">Ver asistentes</button>
+
     </div>
 
-    <div v-if="selectedReservations.length > 0">
-      <hr />
-      <h3>Reservas de esta clase</h3>
-
-      <div v-for="res in selectedReservations" :key="res._id">
-        <p>{{ res.username }} - Asistió: {{ res.attended ? 'Sí' : 'No' }}</p>
-        <button @click="toggleAttendance(res)">
-          Cambiar asistencia
-        </button>
+    <div v-if="showModal" class="modal-overlay">
+      <div class="modal-content">
+        <h3>Asistencia: {{ currentClassTitle }}</h3>
+        <div class="attendees-list">
+          <div v-for="res in selectedReservations" :key="res._id" class="attendee-item">
+            <span>{{ res.username }}</span>
+            <button @click="toggleAttendance(res)">
+              {{ res.attended ? 'Marcar como no asistió' : 'Marcar como asistió' }}
+            </button>
+          </div>
+        </div>
+        <button @click="closeModal">Cerrar</button>
       </div>
     </div>
   </div>
@@ -53,7 +60,9 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const clases = ref([])
+const showModal = ref(false)
 const selectedReservations = ref([])
+const currentClassTitle = ref('')
 
 const title = ref('')
 const description = ref('')
@@ -100,25 +109,42 @@ const deleteClass = async (id) => {
   }
 }
 
-const viewReservations = async (classId) => {
+const viewAttendance = async (classId) => {
+  selectedClass.value = classId
   try {
     const response = await api.get(`/reservas/class/${classId}`)
     selectedReservations.value = response.data
   } catch (error) {
-    console.error("Error cargando reservas:", error)
+    console.error("Error cargando asistentes:", error)
+    alert('Error al cargar reservas')
   }
+}
+
+const openAttendanceModal = async (classId) => {
+  showModal.value = true
+  try {
+    const response = await api.get(`/reservas/class/${classId}`)
+    selectedReservations.value = response.data
+    const clase = clases.value.find(c => c._id === classId)
+    currentClassTitle.value = clase?.title || 'Clase'
+  } catch (err) {
+    alert('Error cargando asistentes')
+  }
+}
+
+const closeModal = () => {
+  showModal.value = false
+  selectedReservations.value = []
 }
 
 const toggleAttendance = async (reservation) => {
   try {
-    await api.patch(`/reservas/${reservation._id}/attendance`, {
+    await api.put(`/reservas/${reservation._id}/attendance`, {
       attended: !reservation.attended
     })
-
-    viewReservations(reservation.classId)
-  } catch (error) {
-    console.error("Error cambiando asistencia:", error)
-    alert('Error al actualizar asistencia')
+    reservation.attended = !reservation.attended
+  } catch (err) {
+    alert('Error actualizando asistencia')
   }
 }
 
@@ -144,5 +170,37 @@ onMounted(loadClases)
   padding: 1rem;
   margin-bottom: 1rem;
   border-radius: 8px;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+.modal-content {
+  background: white;
+  max-height: 80vh;
+  width: 400px;
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+}
+.attendees-list {
+  overflow-y: auto;
+  max-height: 60vh;
+  margin: 1rem 0;
+}
+.attendee-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
 }
 </style>
