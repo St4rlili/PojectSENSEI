@@ -141,15 +141,15 @@ onMounted(loadClases)
 }
 
 h3 {
-  padding-top: 0.3em;
+  padding-top: 0.5em;
   font-size: 2rem;
 }
 
 .desc {
   font-size: 1rem;
   color: #87888a;
-  padding-top: 0.6em;
   font-style: italic;
+  margin-top: 0.6em;
 }
 
 .date {

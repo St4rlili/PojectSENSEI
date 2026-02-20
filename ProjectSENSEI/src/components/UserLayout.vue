@@ -75,14 +75,15 @@ const logout = () => {
   border: none;
   color: white;
   font-size: 15px;
-  padding: 0.8rem 1rem;
+  padding: 1.5rem 1rem;
   border-radius: 10px;
   cursor: pointer;
   transition: 0.2s;
+  background: rgba(255,255,255,0.15);
 }
 
 .nav-item:hover {
-  background: rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.3);
 }
 
 .logout {
