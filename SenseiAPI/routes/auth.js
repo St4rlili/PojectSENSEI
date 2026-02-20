@@ -2,17 +2,14 @@ import express from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { getDB } from '../config/db.js'
+import { validate } from '../middlewares/validate.js'
+import { registerSchema, loginSchema } from '../schemas/index.js'
 
 const router = express.Router()
 
 // REGISTRO
-router.post('/register', async (req, res) => {
+router.post('/register', validate(registerSchema), async (req, res) => {
   const { username, password } = req.body
-
-  if (!username || !password) {
-    return res.status(400).json({ message: 'Faltan datos' })
-  }
-
   const db = getDB()
 
   const existingUser = await db.collection('usuarios').findOne({ username })
@@ -33,7 +30,7 @@ router.post('/register', async (req, res) => {
 })
 
 // LOGIN
-router.post('/login', async (req, res) => {
+router.post('/login', validate(loginSchema), async (req, res) => {
   const { username, password } = req.body
   const db = getDB()
 
@@ -44,11 +41,7 @@ router.post('/login', async (req, res) => {
   if (!validPassword) return res.status(400).json({ message: 'Contraseña incorrecta' })
 
   const token = jwt.sign(
-    {
-      id: user._id,
-      username: user.username,
-      role: user.role
-    },
+    { id: user._id, username: user.username, role: user.role },
     process.env.JWT_SECRET,
     { expiresIn: '2h' }
   )

@@ -3,6 +3,9 @@ import { authMiddleware } from '../middlewares/auth.js'
 import { adminMiddleware } from '../middlewares/admin.js'
 import { getDB } from '../config/db.js'
 import { ObjectId } from 'mongodb'
+import { validate } from '../middlewares/validate.js'
+import { claseSchema, claseEditSchema } from '../schemas/index.js'
+
 
 const router = express.Router()
 
@@ -36,6 +39,7 @@ router.get('/', authMiddleware, async (req, res) => {
         available: c.capacity - totalReservas,
         alreadyReserved: !!reservaUsuario,
         reservationId: reservaUsuario?._id.toString() || null,
+        cancelledLate: reservaUsuario?.cancelledLate || false,
         isFinished: new Date(c.date) < new Date()
       }
     })
@@ -45,7 +49,7 @@ router.get('/', authMiddleware, async (req, res) => {
 })
 
 // POST crear una nueva clase (solo admin)
-router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
+router.post('/', authMiddleware, adminMiddleware, validate(claseSchema), async (req, res) => {
   try {
     const { title, description, date, capacity } = req.body
     const db = getDB()
@@ -60,7 +64,6 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
     }
 
     const result = await db.collection('clases').insertOne(newClass)
-
     res.status(201).json(result)
   } catch (error) {
     res.status(500).json({ message: error.message })
@@ -68,11 +71,11 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
 })
 
 // PUT modificar una clase (solo admin)
-router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
+router.put('/:id', authMiddleware, adminMiddleware, validate(claseEditSchema), async (req, res) => {
   const { id } = req.params
   const { title, description, date, capacity } = req.body
-
   const db = getDB()
+
   const update = {}
   if (title) update.title = title
   if (description) update.description = description

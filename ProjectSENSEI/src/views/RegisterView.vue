@@ -51,9 +51,6 @@
     }
 
     .derecha { 
-        display: flex;
-        justify-content: center; 
-        align-items: center;
         position: fixed; 
         right: 0; 
         top: 0; 

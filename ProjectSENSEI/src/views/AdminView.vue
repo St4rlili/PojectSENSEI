@@ -40,6 +40,7 @@
 
             <div class="card-buttons">
               <button @click="confirmDeleteClass(cls)">Eliminar</button>
+              <button @click="openEditModal(cls)">Editar</button>
               <button @click="openAttendanceModal(cls._id)">Asistentes</button>
             </div>
           </div>
@@ -58,10 +59,12 @@
             class="attendee-item"
           >
             <span class="attendee-name">{{ res.username }}</span>
+
             <button 
               class="attendance-btn" 
-              :class="res.attended ? 'attended' : 'absent'" 
-              @click="toggleAttendance(res)"
+              :class="res.attended ? 'attended' : 'absent'"
+              :disabled="res.cancelledLate"
+              @click="!res.cancelledLate && toggleAttendance(res)"
             >
               {{ res.attended ? '✅' : '❌' }}
             </button>
@@ -88,6 +91,20 @@
         <p>{{ notificationMessage }}</p>
         <div style="margin-top: 1.5rem; text-align:center;">
           <button class="btn-secondary" @click="closeNotification">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showEditModal" class="modal-overlay">
+      <div class="modal">
+        <h3>Editar clase</h3>
+        <input v-model="editForm.title" placeholder="Título" />
+        <input v-model="editForm.description" placeholder="Descripción" />
+        <input v-model="editForm.date" type="datetime-local" />
+        <input v-model.number="editForm.capacity" type="number" placeholder="Capacidad" />
+        <div class="modal-buttons">
+          <button class="btn-secondary" @click="closeEditModal">Cancelar</button>
+          <button class="btn-primary" @click="saveEdit">Guardar</button>
         </div>
       </div>
     </div>
@@ -120,6 +137,10 @@ const classToDelete = ref(null)
 
 const showNotification = ref(false)
 const notificationMessage = ref('')
+
+const showEditModal = ref(false)
+const editingClass = ref(null)
+const editForm = ref({ title: '', description: '', date: '', capacity: 0 })
 
 // Cargar clases
 const loadClases = async () => {
@@ -251,6 +272,53 @@ const notify = (message) => {
 const closeNotification = () => {
   showNotification.value = false
   notificationMessage.value = ''
+}
+
+const openEditModal = (cls) => {
+  editingClass.value = cls
+  const d = new Date(cls.date)
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+    .toISOString().slice(0, 16)
+  editForm.value = {
+    title: cls.title,
+    description: cls.description,
+    date: local,
+    capacity: cls.capacity
+  }
+  showEditModal.value = true
+}
+
+const closeEditModal = () => {
+  showEditModal.value = false
+  editingClass.value = null
+}
+
+const saveEdit = async () => {
+  if (!editForm.value.title.trim()) {
+    notify('El título es obligatorio')
+    return
+  }
+  if (!editForm.value.date) {
+    notify('La fecha es obligatoria')
+    return
+  }
+  if (!editForm.value.capacity || editForm.value.capacity <= 0) {
+    notify('La capacidad debe ser mayor a 0')
+    return
+  }
+  try {
+    await api.put(`/clases/${editingClass.value._id}`, {
+      title: editForm.value.title,
+      description: editForm.value.description,
+      date: new Date(editForm.value.date).toISOString(),
+      capacity: editForm.value.capacity
+    })
+    closeEditModal()
+    notify('Clase actualizada correctamente')
+    loadClases()
+  } catch (err) {
+    notify('Error al actualizar la clase')
+  }
 }
 
 onMounted(loadClases)
@@ -521,8 +589,43 @@ onMounted(loadClases)
   transform: scale(1.1);
 }
 
+.attendance-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btn-secondary.full-width {
   width: 100%;
   margin-top: 1rem;
 }
+
+.btn-primary {
+  background: #ec4899;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: #db2777;
+}
+
+.modal input {
+  display: block;
+  width: 100%;
+  padding: 0.6rem;
+  margin-bottom: 0.7rem;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  box-sizing: border-box;
+}
+
+.modal input:focus {
+  outline: none;
+  border-color: #ec4899;
+  box-shadow: 0 0 0 3px rgba(236,72,153,0.15);
+}
+
 </style>
