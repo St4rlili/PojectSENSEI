@@ -6,10 +6,9 @@ import { ObjectId } from 'mongodb'
 import { validate } from '../middlewares/validate.js'
 import { claseSchema, claseEditSchema } from '../schemas/index.js'
 
-
 const router = express.Router()
 
-// GET de todas las clases (solo usuarios)
+// GET de todas las clases
 router.get('/', authMiddleware, async (req, res) => {
   const db = getDB()
   const userId = new ObjectId(req.user.id)
@@ -17,10 +16,7 @@ router.get('/', authMiddleware, async (req, res) => {
   const clases = await db.collection('clases').find().toArray()
 
   const reservas = await db.collection('reservas')
-    .find({ 
-      userId,
-      noShow: { $ne: true }
-    })
+    .find({ userId })
     .toArray()
 
   const reservasMap = new Map()
@@ -30,12 +26,8 @@ router.get('/', authMiddleware, async (req, res) => {
 
   const clasesConInfo = await Promise.all(
     clases.map(async (c) => {
-
       const totalReservas = await db.collection('reservas')
-        .countDocuments({ 
-          classId: c._id,
-          noShow: { $ne: true }
-        })
+        .countDocuments({ classId: c._id.toString() })
 
       const reservaUsuario = reservasMap.get(c._id.toString())
 
@@ -54,29 +46,28 @@ router.get('/', authMiddleware, async (req, res) => {
   res.json(clasesConInfo)
 })
 
-// POST crear una nueva clase (solo admin)
+// POST crear clase
 router.post('/', authMiddleware, adminMiddleware, validate(claseSchema), async (req, res) => {
   try {
     const { title, description, date, capacity } = req.body
     const db = getDB()
 
-    const newClass = {
+    const result = await db.collection('clases').insertOne({
       title,
       description: description || '',
       date: new Date(date),
       capacity,
       createdBy: req.user.username,
       createdAt: new Date()
-    }
+    })
 
-    const result = await db.collection('clases').insertOne(newClass)
     res.status(201).json(result)
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
 })
 
-// PUT modificar una clase (solo admin)
+// PUT modificar clase
 router.put('/:id', authMiddleware, adminMiddleware, validate(claseEditSchema), async (req, res) => {
   const { id } = req.params
   const { title, description, date, capacity } = req.body
@@ -97,7 +88,7 @@ router.put('/:id', authMiddleware, adminMiddleware, validate(claseEditSchema), a
   res.json({ message: 'Clase actualizada' })
 })
 
-// DELETE eliminar una clase (solo admin)
+// DELETE eliminar clase
 router.delete('/:id', authMiddleware, adminMiddleware, async (req, res) => {
   const { id } = req.params
   const db = getDB()
