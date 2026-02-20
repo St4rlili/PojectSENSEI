@@ -10,16 +10,16 @@
         <p class="desc">{{ cls.description }}</p>
 
         <div class="bottom">
-          <span>{{ cls.available }} plazas disponibles</span>
+          <span v-if="!cls.isFinished && !cls.cancelledLate">{{ cls.available }} plazas disponibles</span>
 
           <button
             v-if="cls.alreadyReserved"
             class="cancel-btn"
-            @click="openCancelModal(cls.reservationId)"
+            :disabled="cls.cancelledLate || cls.isFinished"
+            @click="!cls.cancelledLate && !cls.isFinished && openCancelModal(cls.reservationId)"
           >
-            Cancelar
+            {{ cls.isFinished ? 'Finalizada' : cls.cancelledLate ? 'Cancelada' : 'Cancelar' }}
           </button>
-
           <button
             v-else
             class="reserve-btn"
@@ -33,37 +33,43 @@
         </div>
       </div>
     </div>
-    <div v-if="showModal" class="modal-overlay">
-      <div class="modal">
-        <h3>Cancelar reserva</h3>
-        <p>¿Estás seguro de que quieres cancelar esta reserva?</p>
+      <div v-if="showModal" class="modal-overlay">
+        <div class="modal">
+          <h3>Cancelar reserva</h3>
+          <p>¿Estás seguro de que quieres cancelar esta reserva?</p>
 
-        <div class="modal-buttons">
-          <button class="btn-secondary" @click="closeModal">No</button>
-          <button class="btn-danger" @click="confirmCancel">
-            Sí, cancelar
-          </button>
+          <div class="modal-buttons">
+            <button class="btn-secondary" @click="closeModal">No</button>
+            <button class="btn-danger" @click="confirmCancel">Sí, cancelar</button>
+          </div>
         </div>
       </div>
-    </div>
+
+      <!-- Modal cancelación tardía -->
+      <div v-if="showLateModal" class="modal-overlay">
+        <div class="modal">
+          <h3>Cancelación realizada</h3>
+          <p>Las cancelaciones a falta de 15 minutos de iniciar la actividad quedan registradas como <strong>no asistencia</strong>.</p>
+          <div style="margin-top: 1.5rem; text-align: center;">
+            <button class="btn-secondary" @click="showLateModal = false">Entendido</button>
+          </div>
+        </div>
+      </div>
   </UserLayout>
 </template>
 
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useUserStore } from '../stores/userStore'
 import api from '../services/api'
 import UserLayout from '../components/UserLayout.vue'
-
-const router = useRouter()
-const userStore = useUserStore()
 
 const clases = ref([])
 
 const showModal = ref(false)
 const reservationToCancel = ref(null)
+
+const showLateModal = ref(false)
 
 const loadClases = async () => {
   try {
@@ -95,7 +101,13 @@ const confirmCancel = async () => {
     reservationToCancel.value = null
     await loadClases()
   } catch (error) {
-    alert(error.response?.data?.message || 'Error al cancelar')
+    closeModal()
+    if (error.response?.status === 403) {
+      showLateModal.value = true
+    } else {
+      alert(error.response?.data?.message || 'Error al cancelar')
+    }
+    await loadClases()
   }
 }
 
@@ -141,20 +153,15 @@ onMounted(loadClases)
 }
 
 h3 {
-  padding-top: 0.3em;
+  padding-top: 0.5em;
   font-size: 2rem;
 }
 
 .desc {
   font-size: 1rem;
   color: #87888a;
-  padding-top: 0.6em;
   font-style: italic;
-}
-
-.date {
-  color: #6b7280;
-  margin-bottom: 1rem;
+  margin-top: 0.6em;
 }
 
 .bottom {
@@ -238,6 +245,12 @@ h3 {
   padding: 0.6rem 1.2rem;
   border-radius: 10px;
   cursor: pointer;
+}
+
+.cancel-btn:disabled {
+  background: #fca5a5;
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 </style>

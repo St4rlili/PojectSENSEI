@@ -23,9 +23,6 @@
   }
 
   .derecha { 
-    display: flex;
-    justify-content: center; 
-    align-items: center;
     position: fixed; 
     right: 0; 
     top: 0; 
@@ -81,7 +78,7 @@
   #login { 
     width: 320px; 
     padding: 10px; 
-    background-color: #000000; 
+    background-color: #ec64a8; 
     color: white; 
     border: none; 
     border-radius: 25px; 
@@ -89,13 +86,13 @@
   } 
 
   #login:hover { 
-    background-color: #3b3b3b; 
+    background-color: #ec4899; 
   }
 
   #registro {
     width: 120px; 
     padding: 8px; 
-    background-color: #000000;
+    background-color: #ec64a8;
     color: white; 
     border: none; 
     border-radius: 25px; 
@@ -103,7 +100,7 @@
   }
 
   #registro:hover { 
-    background-color: #3b3b3b; 
+    background-color: #ec4899; 
   }
 </style>
 
@@ -130,7 +127,7 @@ const login = async () => {
     })
 
     const token = response.data.token
-    localStorage.setItem('token', token)
+    sessionStorage.setItem('token', token)
 
     const user = jwtDecode(token)
 

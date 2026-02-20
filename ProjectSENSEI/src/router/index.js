@@ -21,7 +21,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token')
+  const token = sessionStorage.getItem('token')
 
   if (!token && to.path !== '/' && to.path !== '/register') {
     return next('/')
@@ -34,7 +34,7 @@ router.beforeEach((to, from, next) => {
       // Verificar expiración
       const currentTime = Date.now() / 1000
       if (user.exp < currentTime) {
-        localStorage.removeItem('token')
+        sessionStorage.removeItem('token')
         return next('/')
       }
 
@@ -43,14 +43,12 @@ router.beforeEach((to, from, next) => {
       }
 
     } catch (error) {
-      localStorage.removeItem('token')
+      sessionStorage.removeItem('token')
       return next('/')
     }
   }
 
   next()
 })
-
-
 
 export default router

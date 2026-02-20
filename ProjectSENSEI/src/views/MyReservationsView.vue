@@ -5,8 +5,13 @@
     <div class="grid">
       <div v-for="cls in reservas" :key="cls._id" class="card">
         <div class="time-label">{{ formatTime(cls.date) }}</div>
-        
-        <button class="close-x" @click="openCancelModal(cls.reservationId)">✕</button>
+        <button 
+          v-if="!cls.cancelledLate"
+          class="close-x" 
+          @click="openCancelModal(cls.reservationId)"
+        >✕</button>
+
+        <span v-else class="cancelled-badge">Cancelado</span>
 
         <h3>{{ cls.title }}</h3>
         <p class="desc">{{ cls.description }}</p>
@@ -25,27 +30,36 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal cancelación tardía -->
+    <div v-if="showLateModal" class="modal-overlay">
+      <div class="modal">
+        <h3>Cancelación realizada</h3>
+        <p>Las cancelaciones a falta de 15 minutos de iniciar la actividad quedan registradas como <strong>no asistencia</strong>.</p>
+        <div style="margin-top: 1.5rem; text-align: center;">
+          <button class="btn-secondary" @click="showLateModal = false">Entendido</button>
+        </div>
+      </div>
+    </div>
   </UserLayout>
 </template>
 
-
-
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import api from '../services/api'
 import UserLayout from '../components/UserLayout.vue'
 
-const router = useRouter()
 const reservas = ref([])
 
 const showModal = ref(false)
 const reservationToCancel = ref(null)
 
+const showLateModal = ref(false)
+
 const loadReservations = async () => {
   try {
     const response = await api.get('/reservas/my')
-    reservas.value = response.data
+    reservas.value = response.data.filter(r => new Date(r.date) >= new Date())
   } catch (error) {
     console.error(error)
   }
@@ -63,7 +77,13 @@ const confirmCancel = async () => {
     reservationToCancel.value = null
     await loadReservations()
   } catch (error) {
-    alert(error.response?.data?.message || 'Error al cancelar')
+    closeModal()
+    if (error.response?.status === 403) {
+      showLateModal.value = true
+    } else {
+      alert(error.response?.data?.message || 'Error al cancelar')
+    }
+    await loadReservations()
   }
 }
 
@@ -111,20 +131,15 @@ onMounted(loadReservations)
 }
 
 h3 {
-  padding-top: 0.3em;
+  padding-top: 0.5em;
   font-size: 2rem;
 }
 
 .desc {
   font-size: 1rem;
   color: #87888a;
-  padding-top: 0.6em;
   font-style: italic;
-}
-
-.date {
-  color: #6b7280;
-  margin-bottom: 1rem;
+  margin-top: 0.6em;
 }
 
 .close-x {
@@ -191,4 +206,12 @@ h3 {
   cursor: pointer;
 }
 
+.cancelled-badge {
+  position: absolute;
+  top: 15px;
+  right: 18px;
+  color: #ef4444;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
 </style>
