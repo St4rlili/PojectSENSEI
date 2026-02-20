@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "electron:dev": "npm run dev & electron .",
+    "electron:dev": "electron .",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "run-s lint:*",

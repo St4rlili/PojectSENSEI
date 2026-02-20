@@ -48,7 +48,6 @@
 
     #logoImagen { 
         width: 7.5em; 
-        transform: translateY(2.5em);
     }
 
     .derecha { 
@@ -72,7 +71,6 @@
     h2 {
         font-weight: bold;
         font-size: 2.25em;
-        transform: translateY(0.5em);
     }
 
     input { 

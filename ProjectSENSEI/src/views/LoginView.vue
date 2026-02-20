@@ -47,7 +47,6 @@
 
   #logoImagen { 
     width: 7.5em; 
-    transform: translateY(2.5em);
   }
  
   .login-container { 
@@ -70,7 +69,6 @@
   h2 {
     font-weight: bold;
     font-size: 2.25em;
-    transform: translateY(0.5em);
   }
 
   input { 
@@ -136,11 +134,14 @@ const login = async () => {
 
     const user = jwtDecode(token)
 
+    userStore.login(user)
+
     if (user.role === 'admin') {
       router.push('/admin')
     } else {
       router.push('/dashboard')
     }
+
   } catch (err) {
     console.error(err)
     error.value = err.response?.data?.message || 'Error al iniciar sesión'
