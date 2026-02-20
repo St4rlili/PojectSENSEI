@@ -17,14 +17,31 @@ router.post('/', authMiddleware, async (req, res) => {
   if (!clase) return res.status(404).json({ message: 'Clase no encontrada' })
 
   // Verificar capacidad y si ya reservó
-  const existingReservation = await db.collection('reservas').findOne({ classId, userId })
-  if (existingReservation) return res.status(400).json({ message: 'Ya tienes una reserva' })
+  const existingReservation = await db.collection('reservas').findOne({ 
+    classId: new ObjectId(classId), 
+    userId,
+    noShow: { $ne: true }
+  })
 
-  const totalReservations = await db.collection('reservas').countDocuments({ classId })
-  if (totalReservations >= clase.capacity) return res.status(400).json({ message: 'Clase completa' })
+  if (existingReservation) {
+    return res.status(400).json({ message: 'Ya tienes una reserva' })
+  }
+
+  // Verificar si tuvo no asistencia en esta clase
+  const hadNoShow = await db.collection('reservas').findOne({
+    classId: new ObjectId(classId),
+    userId,
+    noShow: true
+  })
+
+  if (hadNoShow) {
+    return res.status(400).json({
+      message: 'No puedes reservar esta clase porque la cancelaste fuera de plazo'
+    })
+  }
 
   const result = await db.collection('reservas').insertOne({
-    classId,
+    classId: new ObjectId(classId),
     userId,
     attended: false,
     createdAt: new Date()
@@ -43,7 +60,10 @@ router.get('/my', authMiddleware, async (req, res) => {
   const userId = new ObjectId(req.user.id)
 
   const reservas = await db.collection('reservas')
-    .find({ userId })
+    .find({ 
+      userId,
+      noShow: { $ne: true }
+    })
     .toArray()
 
   const clasesIds = reservas.map(r => new ObjectId(r.classId))
@@ -68,18 +88,53 @@ router.delete('/:reservationId', authMiddleware, async (req, res) => {
   try {
     const db = getDB()
     const { reservationId } = req.params
-    const userId = req.user.id
+    const userId = new ObjectId(req.user.id)
 
-    const result = await db.collection('reservas').deleteOne({
+    const reserva = await db.collection('reservas').findOne({
       _id: new ObjectId(reservationId),
-      userId: new ObjectId(userId)
+      userId
     })
 
-    if (result.deletedCount === 0) {
+    if (!reserva) {
       return res.status(404).json({ message: 'Reserva no encontrada' })
     }
 
-    res.json({ message: 'Reserva cancelada' })
+    // Obtener la clase
+    const clase = await db.collection('clases').findOne({
+      _id: new ObjectId(reserva.classId)
+    })
+
+    if (!clase) {
+      return res.status(404).json({ message: 'Clase no encontrada' })
+    }
+
+    const now = new Date()
+    const classDate = new Date(clase.date)
+
+    const diffInMinutes = (classDate - now) / (1000 * 60)
+
+    if (diffInMinutes <= 15) {
+      // 🔴 Cancelación tardía → No asistencia
+      await db.collection('reservas').updateOne(
+        { _id: reserva._id },
+        { 
+          $set: { 
+            noShow: true,
+            cancelledAt: new Date()
+          }
+        }
+      )
+
+      return res.json({ message: 'Cancelado como no asistencia' })
+    } else {
+      // 🟢 Cancelación normal
+      await db.collection('reservas').deleteOne({
+        _id: reserva._id
+      })
+
+      return res.json({ message: 'Reserva cancelada correctamente' })
+    }
+
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
@@ -93,7 +148,10 @@ router.get('/class/:classId', authMiddleware, adminMiddleware, async (req, res) 
 
   // Todas las reservas de esa clase
   const reservas = await db.collection('reservas')
-    .find({ classId })
+    .find({ 
+      classId,
+      noShow: { $ne: true }
+    })
     .toArray()
 
   if (reservas.length === 0) return res.json([])

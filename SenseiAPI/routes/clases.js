@@ -14,7 +14,10 @@ router.get('/', authMiddleware, async (req, res) => {
   const clases = await db.collection('clases').find().toArray()
 
   const reservas = await db.collection('reservas')
-    .find({ userId })
+    .find({ 
+      userId,
+      noShow: { $ne: true }
+    })
     .toArray()
 
   const reservasMap = new Map()
@@ -26,7 +29,10 @@ router.get('/', authMiddleware, async (req, res) => {
     clases.map(async (c) => {
 
       const totalReservas = await db.collection('reservas')
-        .countDocuments({ classId: c._id.toString() })
+        .countDocuments({ 
+          classId: c._id,
+          noShow: { $ne: true }
+        })
 
       const reservaUsuario = reservasMap.get(c._id.toString())
 
