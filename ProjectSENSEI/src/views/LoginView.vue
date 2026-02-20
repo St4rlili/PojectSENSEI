@@ -130,7 +130,7 @@ const login = async () => {
     })
 
     const token = response.data.token
-    localStorage.setItem('token', token)
+    sessionStorage.setItem('token', token)
 
     const user = jwtDecode(token)
 
