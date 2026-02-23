@@ -27,7 +27,7 @@ router.get('/', authMiddleware, async (req, res) => {
   const clasesConInfo = await Promise.all(
     clases.map(async (c) => {
       const totalReservas = await db.collection('reservas')
-        .countDocuments({ classId: c._id.toString() })
+        .countDocuments({ classId: c._id })
 
       const reservaUsuario = reservasMap.get(c._id.toString())
 
